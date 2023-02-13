@@ -199,11 +199,46 @@ class UserController extends Controller
         ]);
         $user->save();
 
-        $token = $user->createToken('Token')->plainTextToken;
-
         $token = Str::random(60);
         $domain = URL::to('/');
         $link = $domain . '/verify/' . $token;
+        $data['user'] = $user;
+        $data['link'] = $link;
+        $user->remember_token = $token;
+        $user->save();
+        Mail::send('mail.verify', ['data' => $data], function ($message) use ($user) {
+            $message->to($user->email, $user->name)->subject('Verify Mail');
+        });
+        $token = $user->createToken('Token')->plainTextToken;
+        return response()->json([
+            'message' => 'Successfully created user!',
+            'login_token' => $token
+        ], 200);
+    }
+
+    public function verify($token)
+    {
+        $user = User::where('remember_token', $token)->first();
+        if ($user) {
+            $user->email_verified = true;
+            $user->remember_token = null;
+            $user->save();
+            return response()->json([
+                'message' => 'Successfully verified user!',
+            ], 200);
+        } else {
+            return response()->json([
+                'message' => 'User not found!',
+            ], 401);
+        }
+    }
+
+    public function verify_send(Request $request)
+    {
+        $user = auth()->user();
+        $token = Str::random(60);
+        $domain = URL::to('/');
+        $link = $domain . '/api/user/verify/email/' . $token;
         $data['user'] = $user;
         $data['link'] = $link;
 
@@ -211,9 +246,11 @@ class UserController extends Controller
             $message->to($user->email, $user->name)->subject('Verify Mail');
         });
 
+        $user->remember_token = $token;
+        $user->save();
+
         return response()->json([
-            'message' => 'Successfully created user!',
-            'token' => $token
-        ], 200);
+            'message' => 'Verification link sent to your email'
+        ]);
     }
 }
