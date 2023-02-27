@@ -58,18 +58,19 @@ class UserController extends Controller
 
     public function get_users_by_permission(Request $request)
     {
+
         if (auth()->user()) {
             $per = [
-                'str' => substr(auth()->user()->permission, 0),
-                'int' => substr(auth()->user()->permission, 1)
+                'str' => substr(auth()->user()->permission, 0, 1),
+                'int' => substr(auth()->user()->permission, 1, 1)
             ];
-            if ($per['str'] == 'A') {
+            if ($per['str'] == 'A' || $per['str'] == 'S') {
                 $users = User::all();
             } else {
                 $users = User::where('permission', 'like', $per['str'] . '%')->where('permission', '>', $per['str'] . $per['int'])->get();
             }
             return response()->json([
-                'users' => $users
+                'response' => $users,
             ], 200);
         } else {
             return response()->json([
@@ -86,13 +87,30 @@ class UserController extends Controller
                     'str' => substr(auth()->user()->permission, 0),
                     'int' => substr(auth()->user()->permission, 1)
                 ];
-                if ($per['str'] == 'A') {
-                    $users = User::where($request->type, 'like', '%' . $request->value . '%')->get();
+                if ($per['str'] == 'A' || $per['str'] == 'S') {
+                    if ($request->type == 'all') {
+                        $users = User::where('name', 'like', '%' . $request->value . '%')
+                            ->orWhere('email', 'like', '%' . $request->value . '%')
+                            ->orWhere('phone', 'like', '%' . $request->value . '%')
+                            ->orWhere('permission', 'like', '%' . $request->value . '%')
+                            ->get();
+                    } else {
+                        $users = User::where($request->type, 'like', '%' . $request->value . '%')->get();
+                    }
                 } else {
-                    $users = User::where($request->type, 'like', '%' . $request->value . '%')->where('permission', 'like', $per['str'] . '%')->where('permission', '>', $per['str'] . $per['int'])->get();
+                    if ($request->type == 'all') {
+                        $users = User::where('name', 'like', '%' . $request->value . '%')
+                            ->orWhere('email', 'like', '%' . $request->value . '%')
+                            ->orWhere('phone', 'like', '%' . $request->value . '%')
+                            ->orWhere('permission', 'like', '%' . $request->value . '%')
+                            ->where('permission', '>', $per['int'] . '%')
+                            ->get();
+                    } else {
+                        $users = User::where($request->type, 'like', '%' . $request->value . '%')->where('permission', '>', $per['int'] . '%')->get();
+                    }
                 }
                 return response()->json([
-                    'users' => $users
+                    'response' => $users
                 ], 200);
             } else {
                 return response()->json([
@@ -153,7 +171,7 @@ class UserController extends Controller
     public function delete(Request $request)
     {
         try {
-            if ($request->user()) {
+            if (auth()->user()) {
                 $validator = Validator::make($request->all(), [
                     'email' => 'required|string|email',
                 ]);
@@ -192,16 +210,19 @@ class UserController extends Controller
             'email' => 'required|string|email|unique:users',
             'password' => 'required|string|min:4',
         ]);
+        $phone = $request->phone != null ? $request->phone : null;
+        $per = $request->permission != null ? $request->permission : 'D1';
         $user = new User([
             'name' => $request->name,
             'email' => $request->email,
+            'phone' => $phone,
+            'permission' => $per,
             'password' => Hash::make($request->password),
         ]);
         $user->save();
 
         $token = Str::random(60);
-        $domain = URL::to('/');
-        $link = $domain . '/verify/' . $token;
+        $link = URL::to('/') . '/verify/' . $token;
         $data['user'] = $user;
         $data['link'] = $link;
         $user->remember_token = $token;
@@ -209,7 +230,10 @@ class UserController extends Controller
         Mail::send('mail.verify', ['data' => $data], function ($message) use ($user) {
             $message->to($user->email, $user->name)->subject('Verify Mail');
         });
-        $token = $user->createToken('Token')->plainTextToken;
+        $token = null;
+        if (!$request->add) {
+            $token = $user->createToken('Token')->plainTextToken;
+        }
         return response()->json([
             'message' => 'Successfully created user!',
             'login_token' => $token
@@ -252,5 +276,18 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Verification link sent to your email'
         ]);
+    }
+
+    public function info()
+    {
+        if (auth()->user()) {
+            return response()->json([
+                'total_users' => User::count()
+            ], 200);
+        } else {
+            return response()->json([
+                'message' => 'You are not logged in!',
+            ], 401);
+        }
     }
 }

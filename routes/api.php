@@ -21,13 +21,25 @@ Route::get('/user/verify/email/{token}', [App\Http\Controllers\UserController::c
 
 /* User Post Requests*/
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/user/get', [App\Http\Controllers\UserController::class, 'get_user_by_token']);
+    Route::post('/user', [App\Http\Controllers\UserController::class, 'get_user_by_token']);
+    Route::post('/user/info', [App\Http\Controllers\UserController::class, 'info']);
     Route::post('/user/all', [App\Http\Controllers\UserController::class, 'get_users_by_permission']);
     Route::post('/user/logout', [App\Http\Controllers\UserController::class, 'logout']);
-    Route::post('/user/update', [App\Http\Controllers\UserController::class, 'update_user']);
-    Route::post('/user/delete', [App\Http\Controllers\UserController::class, 'delete_user']);
-    Route::post('/user/search', [App\Http\Controllers\UserController::class, 'search_user']);
+    Route::post('/user/update', [App\Http\Controllers\UserController::class, 'update']);
+    Route::post('/user/add', [App\Http\Controllers\UserController::class, 'register']);
+    Route::post('/user/delete', [App\Http\Controllers\UserController::class, 'delete']);
+    Route::post('/user/search', [App\Http\Controllers\UserController::class, 'search_user_by_permission']);
     Route::post('/user/verify/send', [App\Http\Controllers\UserController::class, 'verify_send']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/shelf/info', [App\Http\Controllers\ShelfController::class, 'info']);
+    Route::post('/shelf/get', [App\Http\Controllers\ShelfController::class, 'get_shelf']);
+    Route::post('/shelf/all', [App\Http\Controllers\ShelfController::class, 'get_shelves']);
+    Route::post('/shelf/add', [App\Http\Controllers\ShelfController::class, 'create_shelf']);
+    Route::post('/shelf/update', [App\Http\Controllers\ShelfController::class, 'update_shelf']);
+    Route::post('/shelf/delete', [App\Http\Controllers\ShelfController::class, 'delete_shelf']);
+    Route::post('/shelf/search', [App\Http\Controllers\ShelfController::class, 'search_shelf']);
 });
 
 /* Shelf Post Requests*/
