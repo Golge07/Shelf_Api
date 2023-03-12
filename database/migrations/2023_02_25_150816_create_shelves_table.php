@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('shelves', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
             $table->string('ingredients');
             $table->integer('quantity');
             $table->integer('number');

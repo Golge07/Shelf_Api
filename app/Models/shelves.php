@@ -10,7 +10,6 @@ class shelves extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name',
         'ingredients',
         'quantity',
         'number',

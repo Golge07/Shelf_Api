@@ -55,7 +55,6 @@ class ShelfController extends Controller
     {
         if (auth()->user()) {
             $shelf = shelves::create([
-                'name' => $request->name,
                 'ingredients' => $request->ingredients,
                 'quantity' => $request->quantity,
                 'number' => $request->number,
@@ -77,7 +76,6 @@ class ShelfController extends Controller
         if (auth()->user()) {
             $shelf = shelves::where('number', $request->number)->first();
             if ($shelf) {
-                $shelf->name = $request->name;
                 $shelf->ingredients = $request->ingredients;
                 $shelf->quantity = $request->quantity;
                 $shelf->number = $request->number;
@@ -114,8 +112,7 @@ class ShelfController extends Controller
     {
         if (auth()->user()) {
             if ($request->type == "all") {
-                $shelf = shelves::where('name', 'like', '%' . $request->value . '%')
-                    ->orWhere('ingredients', 'like', '%' . $request->value . '%')
+                $shelf = shelves::Where('ingredients', 'like', '%' . $request->value . '%')
                     ->orWhere('quantity', 'like', '%' . $request->value . '%')
                     ->orWhere('number', 'like', '%' . $request->value . '%')
                     ->orderBy('number', 'asc')

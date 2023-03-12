@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Http\Controllers\VerifyController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
-use \Illuminate\Support\Str;
-use Illuminate\Support\Facades\URL;
+
 
 class UserController extends Controller
 {
@@ -43,7 +42,7 @@ class UserController extends Controller
         }
     }
 
-    public function get_user_by_token(Request $request)
+    public function get_user(Request $request)
     {
         if ($request->user()) {
             return response()->json([
@@ -56,7 +55,7 @@ class UserController extends Controller
         }
     }
 
-    public function get_users_by_permission(Request $request)
+    public function get_users(Request $request)
     {
 
         if (auth()->user()) {
@@ -67,7 +66,7 @@ class UserController extends Controller
             if ($per['str'] == 'A' || $per['str'] == 'S') {
                 $users = User::all();
             } else {
-                $users = User::where('permission', 'like', $per['str'] . '%')->where('permission', '>', $per['str'] . $per['int'])->get();
+                $users = User::where('permission', 'like', $per['str'] . '%')->where('permission', '>=', $per['str'] . $per['int'])->get();
             }
             return response()->json([
                 'response' => $users,
@@ -79,7 +78,7 @@ class UserController extends Controller
         }
     }
 
-    public function search_user_by_permission(Request $request)
+    public function search_user(Request $request)
     {
         try {
             if (auth()->user()) {
@@ -103,7 +102,7 @@ class UserController extends Controller
                             ->orWhere('email', 'like', '%' . $request->value . '%')
                             ->orWhere('phone', 'like', '%' . $request->value . '%')
                             ->orWhere('permission', 'like', '%' . $request->value . '%')
-                            ->where('permission', '>', $per['int'] . '%')
+                            ->where('permission', '>=', $per['int'] . '%')
                             ->get();
                     } else {
                         $users = User::where($request->type, 'like', '%' . $request->value . '%')->where('permission', '>', $per['int'] . '%')->get();
@@ -220,17 +219,8 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
         ]);
         $user->save();
-
-        $token = Str::random(60);
-        $link = URL::to('/') . '/verify/' . $token;
-        $data['user'] = $user;
-        $data['link'] = $link;
-        $user->remember_token = $token;
-        $user->save();
-        Mail::send('mail.verify', ['data' => $data], function ($message) use ($user) {
-            $message->to($user->email, $user->name)->subject('Verify Mail');
-        });
-        $token = null;
+        $verCtrl = new VerifyController();
+        $verCtrl->sendVerifyEmail($user->email);
         if (!$request->add) {
             $token = $user->createToken('Token')->plainTextToken;
         }
@@ -238,44 +228,6 @@ class UserController extends Controller
             'message' => 'Successfully created user!',
             'login_token' => $token
         ], 200);
-    }
-
-    public function verify($token)
-    {
-        $user = User::where('remember_token', $token)->first();
-        if ($user) {
-            $user->email_verified = true;
-            $user->remember_token = null;
-            $user->save();
-            return response()->json([
-                'message' => 'Successfully verified user!',
-            ], 200);
-        } else {
-            return response()->json([
-                'message' => 'User not found!',
-            ], 401);
-        }
-    }
-
-    public function verify_send(Request $request)
-    {
-        $user = auth()->user();
-        $token = Str::random(60);
-        $domain = URL::to('/');
-        $link = $domain . '/api/user/verify/email/' . $token;
-        $data['user'] = $user;
-        $data['link'] = $link;
-
-        Mail::send('mail.verify', ['data' => $data], function ($message) use ($user) {
-            $message->to($user->email, $user->name)->subject('Verify Mail');
-        });
-
-        $user->remember_token = $token;
-        $user->save();
-
-        return response()->json([
-            'message' => 'Verification link sent to your email'
-        ]);
     }
 
     public function info()
@@ -288,6 +240,47 @@ class UserController extends Controller
             return response()->json([
                 'message' => 'You are not logged in!',
             ], 401);
+        }
+    }
+
+    public function logout()
+    {
+        if (auth()->user()) {
+            auth()->user()->tokens()->delete();
+            return response()->json([
+                'message' => 'Successfully logged out!',
+            ], 200);
+        } else {
+            return response()->json([
+                'message' => 'You are not logged in!',
+            ], 401);
+        }
+    }
+    public function changePhoto(Request $request)
+    {
+        if (auth()->user()) {
+            auth()->user()->pp = $request->img;
+            auth()->user()->save();
+            return response()->json([
+                'message' => 'Successfully changed photo!',
+            ], 200);
+        } else {
+            return response()->json([
+                'message' => 'You are not logged in!',
+            ], 401);
+        }
+    }
+
+    public function checkUser(Request $request)
+    {
+        if (auth()->user()) {
+            return response()->json([
+                'message' => 'success',
+            ], 200);
+        } else {
+            return response()->json([
+                'message' => 'failed',
+            ], 402);
         }
     }
 }
